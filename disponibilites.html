@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Disponibilités de la semaine</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --panel: #141414;
+    --panel-light: #1e1e1e;
+    --accent: #ff8c00;
+    --accent-dim: #cc7000;
+    --text: #ffffff;
+    --text-dim: #9a9a9a;
+    --border: #2c2c2c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+  .container { max-width: 760px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 {
+    font-size: 1.6rem;
+    margin: 0 0 6px;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+  header p { color: var(--text-dim); font-size: 0.9rem; margin: 0; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  .card h2 {
+    font-size: 1rem;
+    margin: 0 0 14px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel-light);
+    color: var(--text);
+    font-size: 0.95rem;
+    margin-bottom: 16px;
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--accent); }
+  .day-block { margin-bottom: 14px; }
+  .day-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    border-left: 3px solid var(--accent);
+    padding-left: 8px;
+  }
+  .slots-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .slot-toggle {
+    flex: 1;
+    min-width: 70px;
+    text-align: center;
+    padding: 8px 4px;
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .slot-toggle.checked {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+  }
+  button {
+    width: 100%;
+    padding: 13px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: #000;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    margin-top: 6px;
+  }
+  button:hover { opacity: 0.85; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status-msg {
+    text-align: center;
+    font-size: 0.85rem;
+    margin-top: 10px;
+    min-height: 18px;
+    color: var(--accent);
+  }
+  .status-msg.error { color: #ff4d4d; }
+  .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .refresh-btn {
+    width: auto;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .shared-note {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-align: center;
+    margin-top: 4px;
+  }
+  .empty-msg { text-align: center; color: var(--text-dim); font-size: 0.85rem; padding: 20px 0; }
+  .delete-x { color: var(--text-dim); cursor: pointer; font-size: 0.9rem; padding: 0 4px; }
+  .delete-x:hover { color: #ff4d4d; }
+  .person-card {
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .person-card .pname { font-weight: 700; color: var(--accent); font-size: 0.85rem; margin-bottom: 4px; }
+  .person-card .pslot { font-size: 0.75rem; color: var(--text-dim); }
+  .summary-best {
+    background: var(--panel-light);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+  .summary-best strong { color: var(--accent); }
+  .presenter-card {
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+  }
+  .presenter-card .pstatus {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+  .schedule-card {
+    background: var(--panel-light);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .schedule-card .sname {
+    font-weight: 700;
+    color: var(--text);
+    font-size: 0.85rem;
+  }
+  .schedule-card .sslot {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.8rem;
+    margin-top: 2px;
+  }
+  .warn-msg {
+    font-size: 0.75rem;
+    color: #ff8c00;
+    background: rgba(255,140,0,0.1);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>DISPONIBILITÉS — SEMAINE</h1>
+    <p>Coche tes créneaux pour planifier les présentations</p>
+  </header>
+
+  <div class="card">
+    <h2>Mon inscription</h2>
+    <input type="text" id="nameInput" placeholder="Ton nom" maxlength="40">
+    <div id="daysContainer"></div>
+    <button id="submitBtn">Enregistrer mes disponibilités</button>
+    <div class="status-msg" id="statusMsg"></div>
+    <div class="shared-note">Sauvegardé dans ce navigateur uniquement</div>
+  </div>
+
+  <div class="card" id="summaryCard" style="display:none;">
+    <h2>Classement par jour</h2>
+    <div class="summary-best" id="summaryBest"></div>
+  </div>
+
+  <div class="card">
+    <h2>Présentations à planifier</h2>
+    <input type="text" id="presenterInput" placeholder="Nom du présentateur" maxlength="40">
+    <button id="addPresenterBtn">Ajouter à la liste</button>
+    <div class="status-msg" id="presenterStatus"></div>
+    <div id="presenterListContainer" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="card">
+    <div class="list-header">
+      <h2 style="margin:0;">Planning généré</h2>
+      <button class="refresh-btn" id="generateBtn">Tirer au sort</button>
+    </div>
+    <div id="scheduleContainer"><div class="empty-msg">Aucun planning généré pour l'instant</div></div>
+  </div>
+
+  <div class="card">
+    <div class="list-header">
+      <h2 style="margin:0;">Liste</h2>
+      <button class="refresh-btn" id="refreshBtn">Actualiser</button>
+    </div>
+    <div id="listContainer"><div class="empty-msg">Chargement...</div></div>
+  </div>
+</div>
+
+<script>
+const DAYS_FULL = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+const SLOTS = ["8h-10h","10h-12h","12h-14h","14h-16h","16h-17h30"];
+const STORAGE_KEY = "disponibilites_data";
+let selected = {};
+
+function renderDaysContainer() {
+  const c = document.getElementById('daysContainer');
+  c.innerHTML = '';
+  DAYS_FULL.forEach((day, di) => {
+    const block = document.createElement('div');
+    block.className = 'day-block';
+    block.innerHTML = `<div class="day-title">${day}</div>`;
+    const row = document.createElement('div');
+    row.className = 'slots-row';
+    SLOTS.forEach((slot, si) => {
+      const key = di + '-' + si;
+      const el = document.createElement('div');
+      el.className = 'slot-toggle';
+      el.textContent = slot;
+      el.addEventListener('click', () => {
+        if (selected[key]) { delete selected[key]; el.classList.remove('checked'); }
+        else { selected[key] = true; el.classList.add('checked'); }
+      });
+      row.appendChild(el);
+    });
+    block.appendChild(row);
+    c.appendChild(block);
+  });
+}
+
+function setStatus(msg, isError) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = 'status-msg' + (isError ? ' error' : '');
+  if (msg) setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+function getAllPeople() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+
+function saveAllPeople(people) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(people));
+}
+
+function submitAvailability() {
+  const nameInput = document.getElementById('nameInput');
+  const name = nameInput.value.trim();
+  const slots = Object.keys(selected);
+
+  if (!name) { setStatus("Entre ton nom d'abord", true); return; }
+  if (slots.length === 0) { setStatus("Coche au moins un créneau", true); return; }
+
+  const people = getAllPeople();
+  const key = name.toLowerCase().replace(/\s+/g, '_');
+  const idx = people.findIndex(p => p.key === key);
+  const data = { key, name, slots, updatedAt: new Date().toISOString() };
+
+  if (idx >= 0) people[idx] = data;
+  else people.push(data);
+
+  saveAllPeople(people);
+  setStatus("Enregistré !", false);
+  loadList();
+}
+
+function deletePerson(key) {
+  const people = getAllPeople().filter(p => p.key !== key);
+  saveAllPeople(people);
+  loadList();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function loadList() {
+  const container = document.getElementById('listContainer');
+  const people = getAllPeople();
+
+  if (people.length === 0) {
+    container.innerHTML = '<div class="empty-msg">Personne ne s\'est encore enregistré</div>';
+    renderSummary([]);
+    return;
+  }
+
+  people.sort((a, b) => a.name.localeCompare(b.name));
+  renderSummary(people);
+
+  let html = '';
+  people.forEach(p => {
+    const slotsLabel = (p.slots || []).map(s => {
+      const [di, si] = s.split('-').map(Number);
+      return DAYS_FULL[di].slice(0,3) + ' ' + SLOTS[si];
+    }).join(', ');
+    html += `<div class="person-card">
+      <div class="pname">${escapeHtml(p.name)} <span class="delete-x" data-key="${p.key}" style="float:right;">Supprimer</span></div>
+      <div class="pslot">${slotsLabel || '—'}</div>
+    </div>`;
+  });
+  container.innerHTML = html;
+  container.querySelectorAll('.delete-x').forEach(el => {
+    el.addEventListener('click', () => deletePerson(el.dataset.key));
+  });
+}
+
+function renderSummary(people) {
+  const card = document.getElementById('summaryCard');
+  const best = document.getElementById('summaryBest');
+  if (people.length === 0) { card.style.display = 'none'; return; }
+
+  const counts = {};
+  people.forEach(p => {
+    (p.slots || []).forEach(s => {
+      counts[s] = counts[s] || [];
+      counts[s].push(p.name);
+    });
+  });
+  const entries = Object.entries(counts);
+  if (entries.length === 0) { card.style.display = 'none'; return; }
+
+  card.style.display = 'block';
+
+  // Total de dispo par jour, pour classer les jours entre eux
+  const dayTotals = {};
+  entries.forEach(([key, names]) => {
+    const di = Number(key.split('-')[0]);
+    dayTotals[di] = (dayTotals[di] || 0) + names.length;
+  });
+
+  // Tri des jours par total décroissant
+  const sortedDays = Object.keys(dayTotals)
+    .map(Number)
+    .sort((a, b) => dayTotals[b] - dayTotals[a]);
+
+  let html = '';
+  sortedDays.forEach(di => {
+    const slotsForDay = entries
+      .filter(([key]) => Number(key.split('-')[0]) === di)
+      .sort((a, b) => b[1].length - a[1].length);
+
+    html += `<div style="margin-bottom:10px;">
+      <div style="color:var(--accent); font-weight:700; margin-bottom:4px;">
+        ${DAYS_FULL[di]} — ${dayTotals[di]} dispo au total
+      </div>`;
+    slotsForDay.forEach(([key, names]) => {
+      const si = Number(key.split('-')[1]);
+      html += `<div style="padding-left:10px; font-size:0.78rem; color:var(--text-dim);">
+        ${SLOTS[si]} : <strong style="color:var(--text);">${names.length}</strong> (${names.join(', ')})
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  best.innerHTML = html;
+}
+
+// ---------- Présentateurs ----------
+const PRESENTERS_KEY = "presentateurs_data";
+const SCHEDULE_KEY = "planning_data";
+
+function getPresenters() {
+  try {
+    const raw = localStorage.getItem(PRESENTERS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+
+function savePresenters(list) {
+  localStorage.setItem(PRESENTERS_KEY, JSON.stringify(list));
+}
+
+function setPresenterStatus(msg, isError) {
+  const el = document.getElementById('presenterStatus');
+  el.textContent = msg;
+  el.className = 'status-msg' + (isError ? ' error' : '');
+  if (msg) setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+function addPresenter() {
+  const input = document.getElementById('presenterInput');
+  const name = input.value.trim();
+  if (!name) { setPresenterStatus("Entre un nom", true); return; }
+
+  const presenters = getPresenters();
+  const key = name.toLowerCase().replace(/\s+/g, '_');
+  if (presenters.some(p => p.key === key)) {
+    setPresenterStatus("Déjà dans la liste", true);
+    return;
+  }
+  presenters.push({ key, name });
+  savePresenters(presenters);
+  input.value = '';
+  setPresenterStatus("Ajouté !", false);
+  renderPresenterList();
+}
+
+function removePresenter(key) {
+  const presenters = getPresenters().filter(p => p.key !== key);
+  savePresenters(presenters);
+  renderPresenterList();
+}
+
+function renderPresenterList() {
+  const container = document.getElementById('presenterListContainer');
+  const presenters = getPresenters();
+  if (presenters.length === 0) {
+    container.innerHTML = '<div class="empty-msg">Aucun présentateur ajouté</div>';
+    return;
+  }
+  container.innerHTML = presenters.map(p => `
+    <div class="presenter-card">
+      <span>${escapeHtml(p.name)}</span>
+      <span class="delete-x" data-key="${p.key}">Supprimer</span>
+    </div>
+  `).join('');
+  container.querySelectorAll('.delete-x').forEach(el => {
+    el.addEventListener('click', () => removePresenter(el.dataset.key));
+  });
+}
+
+// ---------- Tirage au sort du planning ----------
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generateSchedule() {
+  const people = getAllPeople();
+  const presenters = getPresenters();
+  const scheduleContainer = document.getElementById('scheduleContainer');
+
+  if (presenters.length === 0) {
+    scheduleContainer.innerHTML = '<div class="empty-msg">Ajoute au moins un présentateur</div>';
+    return;
+  }
+  if (people.length === 0) {
+    scheduleContainer.innerHTML = '<div class="empty-msg">Aucune disponibilité enregistrée</div>';
+    return;
+  }
+
+  // Compter les dispo par jour
+  const dayCounts = {};
+  people.forEach(p => {
+    (p.slots || []).forEach(s => {
+      const di = Number(s.split('-')[0]);
+      dayCounts[di] = (dayCounts[di] || 0) + 1;
+    });
+  });
+
+  // Jours avec plus de 5 personnes dispo
+  let eligibleDays = Object.keys(dayCounts)
+    .map(Number)
+    .filter(di => dayCounts[di] > 5);
+
+  // Si aucun jour n'a plus de 5 dispo, on prend tous les jours qui ont au moins 1 dispo
+  let usedFallback = false;
+  if (eligibleDays.length === 0) {
+    eligibleDays = Object.keys(dayCounts).map(Number);
+    usedFallback = true;
+  }
+
+  if (eligibleDays.length === 0) {
+    scheduleContainer.innerHTML = '<div class="empty-msg">Pas assez de données pour générer un planning</div>';
+    return;
+  }
+
+  // Pour chaque jour éligible, lister les créneaux disponibles (occupés = false au départ)
+  const slotsTakenPerDay = {};
+  eligibleDays.forEach(di => { slotsTakenPerDay[di] = new Set(); });
+
+  const schedule = [];
+  const shuffledPresenters = shuffleArray(presenters);
+
+  shuffledPresenters.forEach(presenter => {
+    // Tirer un jour au hasard parmi les jours éligibles
+    const dayPool = shuffleArray(eligibleDays);
+    let assigned = false;
+
+    for (const di of dayPool) {
+      // Chercher un créneau libre ce jour-là (pas déjà attribué à une autre présentation)
+      const freeSlots = SLOTS
+        .map((_, si) => si)
+        .filter(si => !slotsTakenPerDay[di].has(si));
+
+      if (freeSlots.length > 0) {
+        const si = shuffleArray(freeSlots)[0];
+        slotsTakenPerDay[di].add(si);
+        schedule.push({ name: presenter.name, day: di, slot: si });
+        assigned = true;
+        break;
+      }
+    }
+
+    if (!assigned) {
+      schedule.push({ name: presenter.name, day: null, slot: null });
+    }
+  });
+
+  saveAllSchedule(schedule);
+  renderSchedule(schedule, usedFallback);
+}
+
+function saveAllSchedule(schedule) {
+  localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedule));
+}
+
+function getSchedule() {
+  try {
+    const raw = localStorage.getItem(SCHEDULE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+
+function renderSchedule(schedule, usedFallback) {
+  const container = document.getElementById('scheduleContainer');
+  if (!schedule || schedule.length === 0) {
+    container.innerHTML = '<div class="empty-msg">Aucun planning généré pour l\'instant</div>';
+    return;
+  }
+
+  let html = '';
+  if (usedFallback) {
+    html += '<div class="warn-msg">Aucun jour n\'avait plus de 5 personnes dispo — répartition faite sur les jours disponibles.</div>';
+  }
+
+  // Trier par jour puis créneau pour un affichage chronologique
+  const sorted = [...schedule].sort((a, b) => {
+    if (a.day === null) return 1;
+    if (b.day === null) return -1;
+    if (a.day !== b.day) return a.day - b.day;
+    return a.slot - b.slot;
+  });
+
+  sorted.forEach(item => {
+    const when = item.day !== null
+      ? `${DAYS_FULL[item.day]} — ${SLOTS[item.slot]}`
+      : 'Aucun créneau libre disponible';
+    html += `<div class="schedule-card">
+      <div class="sname">${escapeHtml(item.name)}</div>
+      <div class="sslot">${when}</div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+renderDaysContainer();
+document.getElementById('submitBtn').addEventListener('click', submitAvailability);
+document.getElementById('refreshBtn').addEventListener('click', loadList);
+document.getElementById('nameInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') submitAvailability();
+});
+document.getElementById('addPresenterBtn').addEventListener('click', addPresenter);
+document.getElementById('presenterInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') addPresenter();
+});
+document.getElementById('generateBtn').addEventListener('click', generateSchedule);
+
+renderPresenterList();
+const existingSchedule = getSchedule();
+if (existingSchedule.length > 0) renderSchedule(existingSchedule, false);
+
+loadList();
+</script>
+</body>
+</html>
